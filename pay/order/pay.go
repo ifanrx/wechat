@@ -31,18 +31,19 @@ func NewOrder(cfg *config.Config) *Order {
 // Params was NEEDED when request Unified order
 // 传入的参数，用于生成 prepay_id 的必需参数
 type Params struct {
-	TotalFee   string
-	CreateIP   string
-	Body       string
-	OutTradeNo string
-	TimeExpire string // 订单失效时间，格式为yyyyMMddHHmmss，如2009年12月27日9点10分10秒表示为20091227091010。
-	OpenID     string
-	TradeType  string
-	SignType   string
-	Detail     string
-	Attach     string
-	GoodsTag   string
-	NotifyURL  string
+	TotalFee      string
+	CreateIP      string
+	Body          string
+	OutTradeNo    string
+	TimeExpire    string // 订单失效时间，格式为yyyyMMddHHmmss，如2009年12月27日9点10分10秒表示为20091227091010。
+	OpenID        string
+	TradeType     string
+	SignType      string
+	Detail        string
+	Attach        string
+	GoodsTag      string
+	NotifyURL     string
+	ProfitSharing string // 是否需要分账，Y for yes，N for no，默认不分账
 }
 
 // Config 是传出用于 js sdk 用的参数
@@ -53,6 +54,7 @@ type Config struct {
 	SignType  string `json:"signType"`
 	Package   string `json:"package"`
 	PaySign   string `json:"paySign"`
+	AppID     string `json:"appId"`
 }
 
 // ConfigForApp 是传出用于 app sdk 用的参数
@@ -85,28 +87,29 @@ type PreOrder struct {
 
 // payRequest 接口请求参数
 type payRequest struct {
-	AppID          string `xml:"appid"`                 // 公众账号ID
-	MchID          string `xml:"mch_id"`                // 商户号
-	DeviceInfo     string `xml:"device_info,omitempty"` // 设备号
-	NonceStr       string `xml:"nonce_str"`             // 随机字符串
-	Sign           string `xml:"sign"`                  // 签名
-	SignType       string `xml:"sign_type,omitempty"`   // 签名类型
-	Body           string `xml:"body"`                  // 商品描述
-	Detail         string `xml:"detail,omitempty"`      // 商品详情
-	Attach         string `xml:"attach,omitempty"`      // 附加数据
-	OutTradeNo     string `xml:"out_trade_no"`          // 商户订单号
-	FeeType        string `xml:"fee_type,omitempty"`    // 标价币种
-	TotalFee       string `xml:"total_fee"`             // 标价金额
-	SpbillCreateIP string `xml:"spbill_create_ip"`      // 终端IP
-	TimeStart      string `xml:"time_start,omitempty"`  // 交易起始时间
-	TimeExpire     string `xml:"time_expire,omitempty"` // 交易结束时间
-	GoodsTag       string `xml:"goods_tag,omitempty"`   // 订单优惠标记
-	NotifyURL      string `xml:"notify_url"`            // 通知地址
-	TradeType      string `xml:"trade_type"`            // 交易类型
-	ProductID      string `xml:"product_id,omitempty"`  // 商品ID
-	LimitPay       string `xml:"limit_pay,omitempty"`   // 指定支付方式
-	OpenID         string `xml:"openid,omitempty"`      // 用户标识
-	SceneInfo      string `xml:"scene_info,omitempty"`  // 场景信息
+	AppID          string `xml:"appid"`                    // 公众账号ID
+	MchID          string `xml:"mch_id"`                   // 商户号
+	DeviceInfo     string `xml:"device_info,omitempty"`    // 设备号
+	NonceStr       string `xml:"nonce_str"`                // 随机字符串
+	Sign           string `xml:"sign"`                     // 签名
+	SignType       string `xml:"sign_type,omitempty"`      // 签名类型
+	Body           string `xml:"body"`                     // 商品描述
+	Detail         string `xml:"detail,omitempty"`         // 商品详情
+	Attach         string `xml:"attach,omitempty"`         // 附加数据
+	OutTradeNo     string `xml:"out_trade_no"`             // 商户订单号
+	FeeType        string `xml:"fee_type,omitempty"`       // 标价币种
+	TotalFee       string `xml:"total_fee"`                // 标价金额
+	SpbillCreateIP string `xml:"spbill_create_ip"`         // 终端IP
+	TimeStart      string `xml:"time_start,omitempty"`     // 交易起始时间
+	TimeExpire     string `xml:"time_expire,omitempty"`    // 交易结束时间
+	GoodsTag       string `xml:"goods_tag,omitempty"`      // 订单优惠标记
+	NotifyURL      string `xml:"notify_url"`               // 通知地址
+	TradeType      string `xml:"trade_type"`               // 交易类型
+	ProductID      string `xml:"product_id,omitempty"`     // 商品ID
+	LimitPay       string `xml:"limit_pay,omitempty"`      // 指定支付方式
+	OpenID         string `xml:"openid,omitempty"`         // 用户标识
+	SceneInfo      string `xml:"scene_info,omitempty"`     // 场景信息
+	ProfitSharing  string `xml:"profit_sharing,omitempty"` // 是否需要分账
 
 	XMLName struct{} `xml:"xml"`
 }
@@ -128,6 +131,7 @@ func (req *payRequest) BridgePayRequest(p *Params, AppID, MchID, nonceStr, sign 
 		Detail:         p.Detail,
 		Attach:         p.Attach,
 		GoodsTag:       p.GoodsTag,
+		ProfitSharing:  p.ProfitSharing,
 	}
 	return &request
 }
@@ -166,6 +170,7 @@ func (o *Order) BridgeConfig(p *Params) (cfg Config, err error) {
 	cfg.PrePayID = order.PrePayID
 	cfg.SignType = p.SignType
 	cfg.Package = "prepay_id=" + order.PrePayID
+	cfg.AppID = order.AppID
 	return
 }
 
@@ -241,6 +246,10 @@ func (o *Order) PrePayOrder(p *Params) (payOrder PreOrder, err error) {
 	if p.TimeExpire != "" {
 		// 如果有传入交易结束时间
 		param["time_expire"] = p.TimeExpire
+	}
+	if p.ProfitSharing != "" {
+		// 如果有传入是否需要分账标识
+		param["profit_sharing"] = p.ProfitSharing
 	}
 
 	sign, err := util.ParamSign(param, o.Key)
